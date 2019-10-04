@@ -77,8 +77,11 @@ void JavascriptEnvironment::OnMessageLoopCreated() {
 void JavascriptEnvironment::OnMessageLoopDestroying() {
   DCHECK(microtasks_runner_);
   base::MessageLoopCurrent::Get()->RemoveTaskObserver(microtasks_runner_.get());
-  platform_->DrainTasks(isolate_);
-  platform_->UnregisterIsolate(isolate_);
+
+  if (platform_) {
+    platform_->DrainTasks(isolate_);
+    platform_->UnregisterIsolate(isolate_);
+  }
 }
 
 NodeEnvironment::NodeEnvironment(node::Environment* env) : env_(env) {}

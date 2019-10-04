@@ -116,7 +116,12 @@ int NodeMain(int argc, char* argv[]) {
     bool more;
     do {
       more = uv_run(env->event_loop(), UV_RUN_ONCE);
-      gin_env.platform()->DrainTasks(env->isolate());
+
+      // gin_env.platform() can possibly be destroyed by owning node context
+      // so we need to guard here to prevent potential UAF
+      if (gin_env.platform())
+        gin_env.platform()->DrainTasks(env->isolate());
+
       if (more == false) {
         node::EmitBeforeExit(env);
 
@@ -136,9 +141,13 @@ int NodeMain(int argc, char* argv[]) {
     v8::Isolate* isolate = env->isolate();
     node::FreeEnvironment(env);
 
-    gin_env.platform()->DrainTasks(isolate);
-    gin_env.platform()->CancelPendingDelayedTasks(isolate);
-    gin_env.platform()->UnregisterIsolate(isolate);
+    // gin_env.platform() can possibly be destroyed by owning node context
+    // so we need to guard here to prevent potential UAF
+    if (gin_env.platform()) {
+      gin_env.platform()->DrainTasks(isolate);
+      gin_env.platform()->CancelPendingDelayedTasks(isolate);
+      gin_env.platform()->UnregisterIsolate(isolate);
+    }
   }
 
   // According to "src/gin/shell/gin_main.cc":
